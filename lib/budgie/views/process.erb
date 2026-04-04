@@ -1,0 +1,102 @@
+<div class="page-header">
+  <h2>Process CSV</h2>
+</div>
+
+<div id="result-banner" style="display:none"></div>
+
+<form id="process-form" method="post" action="/process" enctype="multipart/form-data">
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" name="file" id="file-input" accept=".csv">
+    <div class="drop-icon">&#8681;</div>
+    <div class="drop-label">
+      Drop a CSV here, or <span>click to choose a file</span>
+    </div>
+    <div class="file-selected" id="file-name" style="display:none"></div>
+  </div>
+
+  <div style="margin-top: 16px;">
+    <button type="submit" id="submit-btn" class="btn btn-primary" disabled>Process</button>
+  </div>
+</form>
+
+<script>
+  const dropZone   = document.getElementById("drop-zone");
+  const fileInput  = document.getElementById("file-input");
+  const fileName   = document.getElementById("file-name");
+  const submitBtn  = document.getElementById("submit-btn");
+  const form       = document.getElementById("process-form");
+  const banner     = document.getElementById("result-banner");
+
+  function setFile(file) {
+    if (!file) return;
+    // Replace the file input's files via DataTransfer
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileName.textContent = file.name;
+    fileName.style.display = "block";
+    submitBtn.disabled = false;
+  }
+
+  dropZone.addEventListener("click", () => fileInput.click());
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
+
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith(".csv")) {
+      setFile(file);
+    }
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Processing\u2026";
+    banner.style.display = "none";
+
+    const data = new FormData(form);
+    fetch("/process", { method: "POST", body: data })
+      .then((res) => {
+        if (!res.ok) return res.text().then((t) => { throw new Error(t); });
+        const rows = res.headers.get("X-Rows-Processed");
+        const cols = res.headers.get("X-Columns-Added");
+        return res.blob().then((blob) => ({ blob, rows, cols }));
+      })
+      .then(({ blob, rows, cols }) => {
+        // Trigger download
+        const outName = "processed-" + fileInput.files[0].name;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement("a");
+        a.href     = url;
+        a.download = outName;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        banner.className = "success-banner";
+        banner.textContent =
+          "Done \u2014 " + rows + " row(s) processed, " + cols + " column(s) added. Downloading " + outName + ".";
+        banner.style.display = "block";
+      })
+      .catch((err) => {
+        banner.className = "error-banner";
+        banner.textContent = "Error: " + err.message;
+        banner.style.display = "block";
+      })
+      .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Process";
+      });
+  });
+</script>

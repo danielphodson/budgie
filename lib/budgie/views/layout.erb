@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Budgie</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+      font-size: 14px;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    a { color: #7eb8f7; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      background: #1a1a1a;
+      border-bottom: 1px solid #2e2e2e;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 { font-size: 16px; color: #e0e0e0; letter-spacing: 0.05em; }
+    header h1 span { color: #7eb8f7; }
+
+    nav a {
+      font-size: 13px;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    nav a:hover { background: #2a2a2a; color: #e0e0e0; text-decoration: none; }
+
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 24px;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ccc;
+      margin-bottom: 20px;
+      letter-spacing: 0.03em;
+    }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      color: #888;
+      font-weight: 500;
+      border-bottom: 1px solid #2e2e2e;
+      white-space: nowrap;
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #1e1e1e;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #191919; }
+    td code {
+      background: #1e1e1e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #a8d8a8;
+      font-size: 12px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 1.4;
+      text-decoration: none;
+    }
+    .btn-primary   { background: #2563eb; color: #fff; border-color: #1d4ed8; }
+    .btn-primary:hover { background: #1d4ed8; text-decoration: none; color: #fff; }
+    .btn-secondary { background: #2a2a2a; color: #ccc; border-color: #3a3a3a; }
+    .btn-secondary:hover { background: #333; text-decoration: none; color: #e0e0e0; }
+    .btn-danger    { background: transparent; color: #f87171; border-color: #3a2020; }
+    .btn-danger:hover { background: #2a1515; text-decoration: none; color: #fca5a5; }
+
+    .actions { display: flex; gap: 6px; align-items: center; }
+
+    /* Forms */
+    .form-card {
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 6px;
+      padding: 24px;
+      max-width: 560px;
+    }
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 5px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    input[type="text"] {
+      width: 100%;
+      background: #0f0f0f;
+      border: 1px solid #2e2e2e;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: #2563eb; }
+    input[type="text"].input-error { border-color: #ef4444; }
+    .field-hint { font-size: 11px; color: #555; margin-top: 4px; }
+
+    /* Error banner */
+    .error-banner {
+      background: #2a1515;
+      border: 1px solid #7f1d1d;
+      border-radius: 4px;
+      color: #fca5a5;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+    }
+
+    /* Empty state */
+    .empty { color: #555; font-size: 13px; padding: 24px 0; }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed #2e2e2e;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      max-width: 560px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: #2563eb;
+      background: #111827;
+    }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone .drop-icon { font-size: 32px; margin-bottom: 12px; color: #444; }
+    .drop-zone .drop-label { color: #888; font-size: 13px; line-height: 1.6; }
+    .drop-zone .drop-label span { color: #7eb8f7; }
+    .drop-zone .file-selected { color: #a8d8a8; font-size: 13px; margin-top: 12px; }
+
+    /* Success banner */
+    .success-banner {
+      background: #0f2a1a;
+      border: 1px solid #166534;
+      border-radius: 4px;
+      color: #86efac;
+      font-size: 13px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+    }
+
+    /* Page header row */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .page-header h2 { margin-bottom: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><span>budgie</span></h1>
+    <nav>
+      <a href="/rules">rules</a>
+      <a href="/process">process</a>
+    </nav>
+  </header>
+  <main>
+    <%= yield %>
+  </main>
+</body>
+</html>
