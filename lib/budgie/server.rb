@@ -39,10 +39,9 @@ module Budgie
       repo.create(
         name:         params["name"],
         account:      params["account"] || "",
-        source_col:   params["source_col"],
-        pattern:      params["pattern"],
         output_col:   params["output_col"],
-        output_value: params["output_value"]
+        output_value: params["output_value"],
+        patterns:     [{ source_col: params["source_col"], pattern: params["pattern"] }]
       )
       redirect "/rules"
     rescue Budgie::InvalidPattern => e
@@ -53,7 +52,6 @@ module Budgie
 
     get "/rules/:id/edit" do
       @rule      = repo.find(Integer(params[:id]))
-      @submitted = nil
       @error     = nil
       erb :"rules/edit"
     rescue Budgie::RuleNotFound
@@ -65,10 +63,10 @@ module Budgie
       @submitted = {
         "name"         => "#{source.name} (copy)",
         "account"      => source.account,
-        "source_col"   => source.source_col,
-        "pattern"      => source.pattern,
         "output_col"   => source.output_col,
-        "output_value" => source.output_value
+        "output_value" => source.output_value,
+        "source_col"   => source.patterns.first&.source_col.to_s,
+        "pattern"      => source.patterns.first&.pattern.to_s
       }
       @error = nil
       erb :"rules/new"
@@ -80,23 +78,12 @@ module Budgie
       repo.update(Integer(params[:id]), {
         name:         params["name"],
         account:      params["account"] || "",
-        source_col:   params["source_col"],
-        pattern:      params["pattern"],
         output_col:   params["output_col"],
         output_value: params["output_value"]
       })
       redirect "/rules"
     rescue Budgie::RuleNotFound
       halt 404, "Rule not found"
-    rescue Budgie::InvalidPattern => e
-      @error     = e.message
-      @submitted = params
-      begin
-        @rule = repo.find(Integer(params[:id]))
-      rescue Budgie::RuleNotFound
-        halt 404, "Rule not found"
-      end
-      erb :"rules/edit"
     end
 
     post "/rules/:id/delete" do
@@ -105,6 +92,32 @@ module Budgie
     rescue Budgie::RuleNotFound
       halt 404, "Rule not found"
     end
+
+    # ── Pattern routes ────────────────────────────────────────────────────
+
+    post "/rules/:id/patterns" do
+      repo.add_pattern(
+        Integer(params[:id]),
+        source_col: params["source_col"],
+        pattern:    params["pattern"]
+      )
+      redirect "/rules/#{params[:id]}/edit"
+    rescue Budgie::RuleNotFound
+      halt 404, "Rule not found"
+    rescue Budgie::InvalidPattern => e
+      @rule  = repo.find(Integer(params[:id]))
+      @error = e.message
+      erb :"rules/edit"
+    end
+
+    post "/rules/:id/patterns/:pattern_id/delete" do
+      repo.delete_pattern(Integer(params[:pattern_id]))
+      redirect "/rules/#{params[:id]}/edit"
+    rescue Budgie::RuleNotFound
+      halt 404, "Pattern not found"
+    end
+
+    # ── Process ───────────────────────────────────────────────────────────
 
     get "/process" do
       erb :"process"

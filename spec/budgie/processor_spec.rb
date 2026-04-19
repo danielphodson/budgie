@@ -41,10 +41,10 @@ RSpec.describe Budgie::Processor do
     end
   end
 
-  context "with one matching rule" do
+  context "with one matching rule and one pattern" do
     before do
-      repo.create(name: "Groceries", source_col: "description",
-                  pattern: "grocery", output_col: "category", output_value: "Food")
+      repo.create(name: "Groceries", output_col: "category", output_value: "Food",
+                  patterns: [{ source_col: "description", pattern: "grocery" }])
     end
 
     it "appends the output column to matching rows" do
@@ -59,12 +59,35 @@ RSpec.describe Budgie::Processor do
     end
   end
 
+  context "with a rule that has multiple patterns" do
+    before do
+      repo.create(
+        name: "Mortgage", output_col: "category", output_value: "Mortgage",
+        patterns: [
+          { source_col: "description", pattern: "loan repayment" },
+          { source_col: "description", pattern: "debit interest" }
+        ]
+      )
+    end
+
+    it "fires the rule when any pattern matches (case-insensitive)" do
+      write_csv(input, ["description"],
+                [["LOAN REPAYMENT"], ["Debit Interest"], ["unrelated"]])
+      processor.process(input_path: input, output_path: output)
+
+      table = read_csv(output)
+      expect(table[0]["category"]).to eq("Mortgage")
+      expect(table[1]["category"]).to eq("Mortgage")
+      expect(table[2]["category"]).to be_nil
+    end
+  end
+
   context "with two rules matching the same row" do
     before do
-      repo.create(name: "Food", source_col: "description",
-                  pattern: "grocery", output_col: "category", output_value: "Food")
-      repo.create(name: "Local", source_col: "description",
-                  pattern: "corner", output_col: "tag", output_value: "local")
+      repo.create(name: "Food", output_col: "category", output_value: "Food",
+                  patterns: [{ source_col: "description", pattern: "grocery" }])
+      repo.create(name: "Local", output_col: "tag", output_value: "local",
+                  patterns: [{ source_col: "description", pattern: "corner" }])
     end
 
     it "appends both output columns" do
@@ -79,10 +102,10 @@ RSpec.describe Budgie::Processor do
 
   context "when two rules share an output_col" do
     before do
-      repo.create(name: "R1", source_col: "description",
-                  pattern: "foo", output_col: "category", output_value: "First")
-      repo.create(name: "R2", source_col: "description",
-                  pattern: "foo", output_col: "category", output_value: "Second")
+      repo.create(name: "R1", output_col: "category", output_value: "First",
+                  patterns: [{ source_col: "description", pattern: "foo" }])
+      repo.create(name: "R2", output_col: "category", output_value: "Second",
+                  patterns: [{ source_col: "description", pattern: "foo" }])
     end
 
     it "last matching rule wins" do
@@ -96,18 +119,16 @@ RSpec.describe Budgie::Processor do
 
   context "when source_col does not exist in the CSV" do
     before do
-      repo.create(name: "Missing Col", source_col: "nonexistent",
-                  pattern: ".*", output_col: "flag", output_value: "yes")
+      repo.create(name: "Missing Col", output_col: "flag", output_value: "yes",
+                  patterns: [{ source_col: "nonexistent", pattern: "something" }])
     end
 
-    it "treats the missing column value as empty string (no match for non-blank patterns)" do
+    it "treats the missing column value as empty string and does not match" do
       write_csv(input, ["description"], [["something"]])
       processor.process(input_path: input, output_path: output)
 
       table = read_csv(output)
-      # ".*" matches empty string so this rule WILL fire; the important thing
-      # is it does not raise an error
-      expect(table.headers).to include("flag")
+      expect(table.headers).not_to include("flag")
     end
   end
 end

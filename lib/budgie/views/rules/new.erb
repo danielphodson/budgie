@@ -10,7 +10,7 @@
       <label for="name">Name</label>
       <input type="text" id="name" name="name"
              value="<%= h @submitted["name"] %>"
-             placeholder="e.g. Tag groceries">
+             placeholder="e.g. Mortgage">
     </div>
 
     <div class="form-group">
@@ -18,23 +18,6 @@
       <input type="text" id="account" name="account"
              value="<%= h @submitted["account"] %>"
              placeholder="e.g. Visa">
-    </div>
-
-    <div class="form-group">
-      <label for="source_col">Source column</label>
-      <input type="text" id="source_col" name="source_col"
-             value="<%= h @submitted["source_col"] %>"
-             placeholder="e.g. Description">
-      <p class="field-hint">The CSV column header to match against.</p>
-    </div>
-
-    <div class="form-group">
-      <label for="pattern">Pattern</label>
-      <input type="text" id="pattern" name="pattern"
-             value="<%= h @submitted["pattern"] %>"
-             placeholder="e.g. (?i)whole foods"
-             class="<%= @error ? "input-error" : "" %>">
-      <p class="field-hint">Ruby regex without delimiters. Case-insensitive flag: <code>(?i)</code></p>
     </div>
 
     <div class="form-group">
@@ -48,8 +31,29 @@
       <label for="output_value">Output value</label>
       <input type="text" id="output_value" name="output_value"
              value="<%= h @submitted["output_value"] %>"
-             placeholder="e.g. Groceries">
+             placeholder="e.g. Mortgage">
     </div>
+
+    <fieldset>
+      <legend>First pattern</legend>
+
+      <div class="form-group">
+        <label for="source_col">Source column</label>
+        <input type="text" id="source_col" name="source_col"
+               value="<%= h @submitted["source_col"] %>"
+               placeholder="e.g. Description">
+        <p class="field-hint">The CSV column header to match against.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="pattern">Pattern</label>
+        <input type="text" id="pattern" name="pattern"
+               value="<%= h @submitted["pattern"] %>"
+               placeholder="e.g. Loan repayment"
+               class="<%= @error ? "input-error" : "" %>">
+        <p class="field-hint">Plain text substring match. Case-insensitive.</p>
+      </div>
+    </fieldset>
 
     <div class="actions">
       <button type="submit" class="btn btn-primary">Create rule</button>

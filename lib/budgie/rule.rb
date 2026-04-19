@@ -1,9 +1,10 @@
 module Budgie
-  Rule = Struct.new(:id, :name, :account, :source_col, :pattern,
-                    :output_col, :output_value,
-                    :created_at, :updated_at, keyword_init: true) do
-    def compiled_pattern
-      Regexp.new(pattern)
+  RulePattern = Struct.new(:id, :rule_id, :source_col, :pattern, :created_at, keyword_init: true) do
+    def matches?(value)
+      value.to_s.downcase.include?(pattern.downcase)
     end
   end
+
+  Rule = Struct.new(:id, :name, :account, :output_col, :output_value, :patterns,
+                    :created_at, :updated_at, keyword_init: true)
 end

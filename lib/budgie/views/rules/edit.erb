@@ -1,55 +1,88 @@
 <h2>Edit Rule #<%= @rule.id %></h2>
 
 <div class="form-card">
-  <% if @error %>
-    <div class="error-banner"><%= h @error %></div>
-  <% end %>
-
   <form method="post" action="/rules/<%= @rule.id %>">
     <input type="hidden" name="_method" value="PATCH">
 
     <div class="form-group">
       <label for="name">Name</label>
-      <input type="text" id="name" name="name"
-             value="<%= h @submitted ? @submitted["name"] : @rule.name %>">
+      <input type="text" id="name" name="name" value="<%= h @rule.name %>">
     </div>
 
     <div class="form-group">
       <label for="account">Account</label>
-      <input type="text" id="account" name="account"
-             value="<%= h @submitted ? @submitted["account"] : @rule.account %>">
-    </div>
-
-    <div class="form-group">
-      <label for="source_col">Source column</label>
-      <input type="text" id="source_col" name="source_col"
-             value="<%= h @submitted ? @submitted["source_col"] : @rule.source_col %>">
-      <p class="field-hint">The CSV column header to match against.</p>
-    </div>
-
-    <div class="form-group">
-      <label for="pattern">Pattern</label>
-      <input type="text" id="pattern" name="pattern"
-             value="<%= h @submitted ? @submitted["pattern"] : @rule.pattern %>"
-             class="<%= @error ? "input-error" : "" %>">
-      <p class="field-hint">Ruby regex without delimiters. Case-insensitive flag: <code>(?i)</code></p>
+      <input type="text" id="account" name="account" value="<%= h @rule.account %>">
     </div>
 
     <div class="form-group">
       <label for="output_col">Output column</label>
-      <input type="text" id="output_col" name="output_col"
-             value="<%= h @submitted ? @submitted["output_col"] : @rule.output_col %>">
+      <input type="text" id="output_col" name="output_col" value="<%= h @rule.output_col %>">
     </div>
 
     <div class="form-group">
       <label for="output_value">Output value</label>
-      <input type="text" id="output_value" name="output_value"
-             value="<%= h @submitted ? @submitted["output_value"] : @rule.output_value %>">
+      <input type="text" id="output_value" name="output_value" value="<%= h @rule.output_value %>">
     </div>
 
     <div class="actions">
       <button type="submit" class="btn btn-primary">Save changes</button>
       <a href="/rules" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="form-card">
+  <h3>Patterns</h3>
+  <p class="field-hint">A rule fires when <strong>any</strong> of its patterns matches.</p>
+
+  <% if @error %>
+    <div class="error-banner"><%= h @error %></div>
+  <% end %>
+
+  <% if @rule.patterns.any? %>
+    <table>
+      <thead>
+        <tr>
+          <th>Source column</th>
+          <th>Pattern</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rule.patterns.each do |p| %>
+          <tr>
+            <td><%= h p.source_col %></td>
+            <td><code><%= h p.pattern %></code></td>
+            <td>
+              <form method="post" action="/rules/<%= @rule.id %>/patterns/<%= p.id %>/delete"
+                    onsubmit="return confirm('Remove this pattern?')">
+                <button type="submit" class="btn btn-danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="empty">No patterns yet — add one below.</p>
+  <% end %>
+
+  <h4>Add pattern</h4>
+  <form method="post" action="/rules/<%= @rule.id %>/patterns">
+    <div class="form-group">
+      <label for="source_col">Source column</label>
+      <input type="text" id="source_col" name="source_col"
+             placeholder="e.g. Description">
+    </div>
+    <div class="form-group">
+      <label for="pattern">Pattern</label>
+      <input type="text" id="pattern" name="pattern"
+             placeholder="e.g. Loan repayment"
+             class="<%= @error ? "input-error" : "" %>">
+      <p class="field-hint">Plain text substring match. Case-insensitive.</p>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn btn-secondary">Add pattern</button>
     </div>
   </form>
 </div>

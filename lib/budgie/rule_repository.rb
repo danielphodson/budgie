@@ -1,47 +1,72 @@
 module Budgie
   # All SQL for rule management lives here.
-  # Returns Budgie::Rule value objects; never exposes raw hashes to callers.
+  # Returns Budgie::Rule / Budgie::RulePattern value objects; never exposes
+  # raw hashes to callers.
   class RuleRepository
     def initialize(database)
       @db = database.connection
     end
 
+    # ── Rules ──────────────────────────────────────────────────────────────
+
     def all
-      @db.execute("SELECT * FROM rules ORDER BY id").map { |row| row_to_rule(row) }
+      rules = @db.execute("SELECT * FROM rules ORDER BY id").map { |row| row_to_rule(row) }
+      load_patterns!(rules)
+      rules
     end
 
     def find(id)
       row = @db.execute("SELECT * FROM rules WHERE id = ?", [id]).first
       raise RuleNotFound, "Rule #{id} not found" unless row
 
-      row_to_rule(row)
+      rule = row_to_rule(row)
+      load_patterns!([rule])
+      rule
     end
 
-    def create(name:, account: "", source_col:, pattern:, output_col:, output_value:)
-      validate_pattern!(pattern)
+    # Creates a rule with an optional initial list of patterns.
+    # Each element of +patterns+ is a hash with :source_col and :pattern keys.
+    def create(name:, account: "", output_col:, output_value:, patterns: [])
+      patterns.each { |p| validate_pattern!(p[:pattern] || p["pattern"]) }
+
       @db.execute(
-        "INSERT INTO rules (name, account, source_col, pattern, output_col, output_value) VALUES (?, ?, ?, ?, ?, ?)",
-        [name, account.to_s, source_col, pattern, output_col, output_value]
+        "INSERT INTO rules (name, account, output_col, output_value) VALUES (?, ?, ?, ?)",
+        [name, account.to_s, output_col, output_value]
       )
-      find(@db.last_insert_row_id)
+      rule_id = @db.last_insert_row_id
+
+      patterns.each do |p|
+        insert_pattern(rule_id, p[:source_col] || p["source_col"], p[:pattern] || p["pattern"])
+      end
+
+      find(rule_id)
     end
 
+    # Updates scalar rule attributes. Optionally replaces all patterns when
+    # +attrs+ includes a "patterns" key (array of {source_col:, pattern:} hashes).
     def update(id, attrs)
-      rule = find(id)
+      find(id) # raises RuleNotFound if missing
 
-      allowed = %w[name account source_col pattern output_col output_value]
-      updates = attrs.transform_keys(&:to_s).slice(*allowed)
-      return rule if updates.empty?
+      attrs = attrs.transform_keys(&:to_s)
 
-      validate_pattern!(updates["pattern"]) if updates.key?("pattern")
+      allowed = %w[name account output_col output_value]
+      updates = attrs.slice(*allowed)
 
-      set_clause = updates.keys.map { |k| "#{k} = ?" }.join(", ")
-      set_clause += ", updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+      unless updates.empty?
+        set_clause = updates.keys.map { |k| "#{k} = ?" }.join(", ")
+        set_clause += ", updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now')"
+        @db.execute("UPDATE rules SET #{set_clause} WHERE id = ?", [*updates.values, id])
+      end
 
-      @db.execute(
-        "UPDATE rules SET #{set_clause} WHERE id = ?",
-        [*updates.values, id]
-      )
+      if attrs.key?("patterns")
+        new_patterns = Array(attrs["patterns"])
+        new_patterns.each { |p| validate_pattern!(p["pattern"] || p[:pattern]) }
+        @db.execute("DELETE FROM rule_patterns WHERE rule_id = ?", [id])
+        new_patterns.each do |p|
+          insert_pattern(id, p["source_col"] || p[:source_col], p["pattern"] || p[:pattern])
+        end
+      end
+
       find(id)
     end
 
@@ -51,12 +76,51 @@ module Budgie
       true
     end
 
+    # ── Patterns ───────────────────────────────────────────────────────────
+
+    def add_pattern(rule_id, source_col:, pattern:)
+      find(rule_id) # raises RuleNotFound if rule is missing
+      validate_pattern!(pattern)
+      insert_pattern(rule_id, source_col, pattern)
+      find(rule_id)
+    end
+
+    def delete_pattern(pattern_id)
+      row = @db.execute("SELECT * FROM rule_patterns WHERE id = ?", [pattern_id]).first
+      raise RuleNotFound, "Pattern #{pattern_id} not found" unless row
+
+      @db.execute("DELETE FROM rule_patterns WHERE id = ?", [pattern_id])
+      true
+    end
+
     private
 
+    def load_patterns!(rules)
+      return if rules.empty?
+
+      placeholders = rules.map { "?" }.join(", ")
+      ids = rules.map(&:id)
+
+      pattern_rows = @db.execute(
+        "SELECT * FROM rule_patterns WHERE rule_id IN (#{placeholders}) ORDER BY id",
+        ids
+      )
+
+      rules_by_id = rules.each_with_object({}) { |r, h| h[r.id] = r }
+      pattern_rows.each do |row|
+        rules_by_id[row["rule_id"]]&.patterns&.push(row_to_pattern(row))
+      end
+    end
+
+    def insert_pattern(rule_id, source_col, pattern)
+      @db.execute(
+        "INSERT INTO rule_patterns (rule_id, source_col, pattern) VALUES (?, ?, ?)",
+        [rule_id, source_col, pattern]
+      )
+    end
+
     def validate_pattern!(pattern)
-      Regexp.new(pattern)
-    rescue RegexpError => e
-      raise InvalidPattern, "Invalid regex pattern: #{e.message}"
+      raise InvalidPattern, "Pattern cannot be empty" if pattern.to_s.strip.empty?
     end
 
     def row_to_rule(row)
@@ -64,12 +128,21 @@ module Budgie
         id:           row["id"],
         name:         row["name"],
         account:      row["account"].to_s,
-        source_col:   row["source_col"],
-        pattern:      row["pattern"],
         output_col:   row["output_col"],
         output_value: row["output_value"],
+        patterns:     [],
         created_at:   row["created_at"],
         updated_at:   row["updated_at"]
+      )
+    end
+
+    def row_to_pattern(row)
+      RulePattern.new(
+        id:         row["id"],
+        rule_id:    row["rule_id"],
+        source_col: row["source_col"],
+        pattern:    row["pattern"],
+        created_at: row["created_at"]
       )
     end
   end

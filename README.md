@@ -1,6 +1,6 @@
 # budgie
 
-A Ruby gem that augments CSV files by applying regex-based rules stored in a SQLite database. Each rule matches a column value against a pattern and appends new columns to matching rows.
+A Ruby gem that augments CSV files by applying rules stored in a SQLite database. Each rule matches column values against patterns and appends new columns to matching rows.
 
 ## Installation
 
@@ -27,16 +27,23 @@ gem install budgie-0.1.0.gem
 
 ## How it works
 
-You define **rules**, each specifying:
+You define **rules**. Each rule specifies an output (a column name and value to write) and one or more **patterns** that trigger it.
 
 | Field | Description |
 |---|---|
 | **Name** | A human-readable label for the rule |
 | **Account** | Optional label written to the `account` column in the output |
-| **Source column** | The CSV column header to match against |
-| **Pattern** | A Ruby regex (without delimiters) matched against the source column value |
 | **Output column** | The column name to append to the output CSV |
 | **Output value** | The value to write in that column when the rule matches |
+
+Each **pattern** within a rule specifies:
+
+| Field | Description |
+|---|---|
+| **Source column** | The CSV column header to match against |
+| **Pattern** | A case-insensitive substring to look for in that column |
+
+A rule fires when **any** of its patterns matches. This lets you group related transactions under one output value — for example, a "Mortgage" rule with patterns for "Loan repayment" and "Debit interest".
 
 When you process a CSV, budgie evaluates every rule against every row. Matching rules append their output columns to the row. The `account` column (if any rule sets it) always appears first among the appended columns.
 
@@ -59,7 +66,7 @@ budgie server start --db /path/to/my.db  # use a specific database file
 
 The web UI has two sections:
 
-- **Rules** — create, edit, copy, and delete rules
+- **Rules** — create, edit, copy, and delete rules; add and remove individual patterns per rule
 - **Process** — drag and drop (or select) a CSV file, click Process, and the augmented file downloads automatically as `processed-<original-name>.csv`
 
 ## CLI
@@ -80,21 +87,21 @@ Reads `input.csv`, applies all rules, and writes the augmented rows to `output.c
 budgie rules list
 ```
 
-**Add a rule:**
+**Add a rule** (with an initial pattern):
 
 ```sh
 budgie rules add \
   --name "Groceries" \
   --account "Visa" \
   --source-col "Description" \
-  --pattern "(?i)whole foods|tesco|sainsbury" \
+  --pattern "whole foods" \
   --output-col "Category" \
   --output-value "Groceries"
 ```
 
-`--account` is optional. The pattern is a Ruby regex without delimiters — use `(?i)` for case-insensitive matching.
+`--account` is optional. The pattern is a plain text substring — matching is always case-insensitive. Additional patterns can be added via the web UI or by editing the YAML.
 
-**Edit a rule** (opens `$EDITOR` with a YAML file):
+**Edit a rule** (opens `$EDITOR` with a YAML file including a `patterns` list):
 
 ```sh
 budgie rules edit 3
@@ -117,7 +124,7 @@ Date,Description,Amount
 2024-01-07,Whole Foods Market,32.10
 ```
 
-And a rule: source column `Description`, pattern `(?i)tesco|whole foods`, output column `Category`, output value `Groceries`, account `Visa`:
+And a rule with output column `Category`, output value `Groceries`, account `Visa`, and patterns `tesco` and `whole foods` (both matching the `Description` column):
 
 Running `budgie process transactions.csv out.csv` produces:
 
@@ -127,6 +134,16 @@ Date,Description,Amount,account,Category
 2024-01-06,Shell Petrol,60.00,,
 2024-01-07,Whole Foods Market,32.10,Visa,Groceries
 ```
+
+## Seeding rules from a categorised CSV
+
+If you already have a CSV with a `Category` (or `CATEGORY`) column, you can bootstrap your rules automatically:
+
+```sh
+bundle exec ruby scripts/seed_rules.rb path/to/transactions.csv
+```
+
+The script reads the `Other Party` and `Category` columns and creates one rule per category. Each unique value in `Other Party` becomes a pattern on that rule. Re-running is safe — existing rules and patterns are skipped, only new ones are added.
 
 ## Database
 

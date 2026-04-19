@@ -12,7 +12,8 @@ module Budgie
     # Returns a result hash: { rows_processed:, columns_added: }
     def process(input_path:, output_path:)
       rules = @repo.all
-      compiled = rules.map { |r| [r, r.compiled_pattern] }
+
+      compiled_rules = rules.map { |rule| [rule, rule.patterns] }
 
       table = CSV.read(input_path, headers: true)
       original_headers = table.headers
@@ -22,11 +23,12 @@ module Budgie
 
       table.each do |row|
         extras = {}
-        compiled.each do |rule, pattern|
-          next unless pattern.match?(row[rule.source_col].to_s)
+        compiled_rules.each do |rule, compiled_patterns|
+          # Rule fires if any of its patterns matches the corresponding column.
+          next unless compiled_patterns.any? { |p| p.matches?(row[p.source_col]) }
 
           # Last matching rule wins when multiple rules share an output_col.
-          extras["account"]      = rule.account if rule.account && !rule.account.empty?
+          extras["account"]       = rule.account if rule.account && !rule.account.empty?
           extras[rule.output_col] = rule.output_value
 
           extra_col_set << rule.output_col unless extra_col_set.include?(rule.output_col)
