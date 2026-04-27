@@ -1,0 +1,92 @@
+<table class="tracking-table">
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th style="text-align:right"><%= label || (kind == "income" ? "Received" : "Spent") %></th>
+      <th style="text-align:right">Budget</th>
+      <th style="min-width:160px">Progress</th>
+      <th style="text-align:right">Remaining</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% rows.each do |row| %>
+      <%
+        cat      = row[:category]
+        budget   = row[:budget]
+        spent     = row[:spent]
+        row_kind  = kind || row[:kind]
+        spent_abs = row_kind == "income" ? (spent > 0 ? spent : 0.0) : (spent < 0 ? spent.abs : 0.0)
+
+        if budget && budget > 0
+          pct       = [(spent_abs / budget * 100).round(1), 100].min
+          remaining = budget - spent_abs
+          over      = remaining < 0
+        else
+          pct = remaining = over = nil
+        end
+      %>
+      <tr class="<%= over ? "row-over" : (pct ? "row-under" : "row-no-budget") %>">
+        <td class="cat-name">
+          <% if cat %>
+            <a href="/transactions?month=<%= h(@month) %>&category=<%= Rack::Utils.escape(cat) %>"><%= h(cat) %></a>
+          <% else %>
+            <span class="uncategorized">Uncategorized</span>
+          <% end %>
+        </td>
+        <td style="text-align:right" class="<%= row_kind == "income" ? "amount-positive" : "amount-negative" %>">
+          <%= format("%.2f", row_kind == "income" ? spent_abs : -spent_abs) %>
+        </td>
+        <td style="text-align:right;color:#555">
+          <%= budget ? "$#{"%.2f" % budget}" : "—" %>
+        </td>
+        <td class="progress-cell">
+          <% if pct %>
+            <div class="progress-bar">
+              <div class="progress-fill <%= over ? "fill-over" : "fill-under" %>"
+                   style="width:<%= pct %>%"></div>
+            </div>
+            <span class="pct-label"><%= pct %>%</span>
+          <% end %>
+        </td>
+        <td style="text-align:right">
+          <% if remaining %>
+            <% if over %>
+              <span class="over-label">over by $<%= format("%.2f", remaining.abs) %></span>
+            <% else %>
+              <span class="under-label">$<%= format("%.2f", remaining) %> left</span>
+            <% end %>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+  <tfoot>
+    <%
+      section_total = rows.sum { |r|
+        rk = kind || r[:kind]
+        rk == "income" ? (r[:spent] > 0 ? r[:spent] : 0.0) : (r[:spent] < 0 ? r[:spent].abs : 0.0)
+      }
+      section_budget = rows.sum { |r| r[:budget] || 0.0 }
+      section_over   = section_total > section_budget && section_budget > 0
+    %>
+    <tr class="summary-row">
+      <td><strong>Total</strong></td>
+      <td style="text-align:right" class="<%= kind == "income" ? "amount-positive" : "amount-negative" %>">
+        <strong><%= format("%.2f", (kind || "expense") == "income" ? section_total : -section_total) %></strong>
+      </td>
+      <td style="text-align:right">
+        <strong><%= section_budget > 0 ? "$#{"%.2f" % section_budget}" : "—" %></strong>
+      </td>
+      <td></td>
+      <td style="text-align:right">
+        <% if section_budget > 0 %>
+          <% if section_over %>
+            <span class="over-label"><strong>over by $<%= format("%.2f", section_total - section_budget) %></strong></span>
+          <% else %>
+            <span class="under-label"><strong>$<%= format("%.2f", section_budget - section_total) %> left</strong></span>
+          <% end %>
+        <% end %>
+      </td>
+    </tr>
+  </tfoot>
+</table>

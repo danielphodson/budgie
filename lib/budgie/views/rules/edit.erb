@@ -5,23 +5,30 @@
     <input type="hidden" name="_method" value="PATCH">
 
     <div class="form-group">
-      <label for="name">Name</label>
-      <input type="text" id="name" name="name" value="<%= h @rule.name %>">
-    </div>
-
-    <div class="form-group">
-      <label for="account">Account</label>
-      <input type="text" id="account" name="account" value="<%= h @rule.account %>">
-    </div>
-
-    <div class="form-group">
-      <label for="output_col">Output column</label>
-      <input type="text" id="output_col" name="output_col" value="<%= h @rule.output_col %>">
-    </div>
-
-    <div class="form-group">
-      <label for="output_value">Output value</label>
+      <label for="output_value">Category</label>
       <input type="text" id="output_value" name="output_value" value="<%= h @rule.output_value %>">
+    </div>
+
+    <div class="form-group">
+      <label>Type</label>
+      <div class="kind-toggle">
+        <label class="kind-option">
+          <input type="radio" name="kind" value="expense" <%= @rule.kind != "income" ? "checked" : "" %>>
+          <span>Expense</span>
+        </label>
+        <label class="kind-option">
+          <input type="radio" name="kind" value="income" <%= @rule.kind == "income" ? "checked" : "" %>>
+          <span>Income</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="monthly_budget">Monthly budget (optional)</label>
+      <input type="number" id="monthly_budget" name="monthly_budget"
+             value="<%= @rule.monthly_budget %>"
+             placeholder="e.g. 500.00"
+             step="0.01" min="0">
     </div>
 
     <div class="actions">
@@ -67,12 +74,15 @@
     <p class="empty">No patterns yet — add one below.</p>
   <% end %>
 
-  <h4>Add pattern</h4>
+  <h4 style="margin-top:20px;margin-bottom:12px;font-size:13px;color:#888">Add pattern</h4>
   <form method="post" action="/rules/<%= @rule.id %>/patterns">
     <div class="form-group">
       <label for="source_col">Source column</label>
-      <input type="text" id="source_col" name="source_col"
-             placeholder="e.g. Description">
+      <select id="source_col" name="source_col">
+        <% ["Other Party", "Description", "Particulars"].each do |col| %>
+          <option value="<%= h col %>"><%= h col %></option>
+        <% end %>
+      </select>
     </div>
     <div class="form-group">
       <label for="pattern">Pattern</label>

@@ -5,6 +5,6 @@ module Budgie
     end
   end
 
-  Rule = Struct.new(:id, :name, :account, :output_col, :output_value, :patterns,
-                    :created_at, :updated_at, keyword_init: true)
+  Rule = Struct.new(:id, :name, :account, :output_col, :output_value, :monthly_budget,
+                    :kind, :patterns, :created_at, :updated_at, keyword_init: true)
 end

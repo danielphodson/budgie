@@ -145,6 +145,23 @@
     /* Empty state */
     .empty { color: #555; font-size: 13px; padding: 24px 0; }
 
+    /* Select */
+    select {
+      width: 100%;
+      background: #0f0f0f;
+      border: 1px solid #2e2e2e;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+    select:focus { border-color: #2563eb; }
+    select option { background: #1a1a1a; }
+
     /* Drop zone */
     .drop-zone {
       border: 2px dashed #2e2e2e;
@@ -164,6 +181,38 @@
     .drop-zone .drop-label { color: #888; font-size: 13px; line-height: 1.6; }
     .drop-zone .drop-label span { color: #7eb8f7; }
     .drop-zone .file-selected { color: #a8d8a8; font-size: 13px; margin-top: 12px; }
+
+    /* Kind toggle */
+    .kind-toggle {
+      display: flex;
+      gap: 0;
+      border: 1px solid #2e2e2e;
+      border-radius: 4px;
+      overflow: hidden;
+      width: fit-content;
+    }
+    .kind-option {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      text-transform: none;
+      letter-spacing: normal;
+      margin: 0;
+    }
+    .kind-option input[type="radio"] { display: none; }
+    .kind-option span {
+      display: block;
+      padding: 5px 16px;
+      font-size: 12px;
+      color: #555;
+      background: #0f0f0f;
+      border-right: 1px solid #2e2e2e;
+      transition: background 0.1s, color 0.1s;
+      user-select: none;
+    }
+    .kind-option:last-child span { border-right: none; }
+    .kind-option input:checked + span { background: #1e2a1e; color: #86efac; }
+    .kind-option:has(input[value="income"]) input:checked + span { background: #1a2535; color: #7eb8f7; }
 
     /* Success banner */
     .success-banner {
@@ -191,7 +240,8 @@
     <h1><span>budgie</span></h1>
     <nav>
       <a href="/rules">rules</a>
-      <a href="/process">process</a>
+      <a href="/transactions">transactions</a>
+      <a href="/tracking">tracking</a>
     </nav>
   </header>
   <main>

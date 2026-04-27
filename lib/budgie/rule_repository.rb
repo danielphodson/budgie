@@ -26,12 +26,12 @@ module Budgie
 
     # Creates a rule with an optional initial list of patterns.
     # Each element of +patterns+ is a hash with :source_col and :pattern keys.
-    def create(name:, account: "", output_col:, output_value:, patterns: [])
+    def create(name:, account: "", output_col:, output_value:, monthly_budget: nil, kind: "expense", patterns: [])
       patterns.each { |p| validate_pattern!(p[:pattern] || p["pattern"]) }
 
       @db.execute(
-        "INSERT INTO rules (name, account, output_col, output_value) VALUES (?, ?, ?, ?)",
-        [name, account.to_s, output_col, output_value]
+        "INSERT INTO rules (name, account, output_col, output_value, monthly_budget, kind) VALUES (?, ?, ?, ?, ?, ?)",
+        [name, account.to_s, output_col, output_value, monthly_budget, kind]
       )
       rule_id = @db.last_insert_row_id
 
@@ -49,7 +49,7 @@ module Budgie
 
       attrs = attrs.transform_keys(&:to_s)
 
-      allowed = %w[name account output_col output_value]
+      allowed = %w[name account output_col output_value monthly_budget kind]
       updates = attrs.slice(*allowed)
 
       unless updates.empty?
@@ -125,14 +125,16 @@ module Budgie
 
     def row_to_rule(row)
       Rule.new(
-        id:           row["id"],
-        name:         row["name"],
-        account:      row["account"].to_s,
-        output_col:   row["output_col"],
-        output_value: row["output_value"],
-        patterns:     [],
-        created_at:   row["created_at"],
-        updated_at:   row["updated_at"]
+        id:             row["id"],
+        name:           row["name"],
+        account:        row["account"].to_s,
+        output_col:     row["output_col"],
+        output_value:   row["output_value"],
+        monthly_budget: row["monthly_budget"],
+        kind:           row["kind"] || "expense",
+        patterns:       [],
+        created_at:     row["created_at"],
+        updated_at:     row["updated_at"]
       )
     end
 

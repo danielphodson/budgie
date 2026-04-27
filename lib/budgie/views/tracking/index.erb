@@ -1,0 +1,150 @@
+<div class="page-header">
+  <h2>Tracking</h2>
+</div>
+
+<% if @months.empty? %>
+  <p class="empty">No transactions yet. <a href="/transactions/upload">Import a CSV</a> to get started.</p>
+<% else %>
+  <div class="month-nav">
+    <a href="/tracking?month=<%= h(@prev_month) %>" class="btn btn-secondary">&larr;</a>
+    <span class="month-label"><%= h(format_month(@month)) %></span>
+    <a href="/tracking?month=<%= h(@next_month) %>" class="btn btn-secondary">&rarr;</a>
+  </div>
+
+  <% if @expense_rows.empty? && @income_rows.empty? && @unbudgeted_rows.empty? %>
+    <p class="empty" style="margin-top:24px">No categorised transactions for this month.</p>
+  <% else %>
+
+    <%
+      total_income     = @income_rows.sum     { |r| r[:spent] > 0 ? r[:spent] : 0.0 }
+      total_expenses   = @expense_rows.sum    { |r| r[:spent] < 0 ? r[:spent].abs : 0.0 }
+      total_unbudgeted = @unbudgeted_rows.sum { |r| r[:spent] }
+      net = total_income - total_expenses + total_unbudgeted
+    %>
+
+    <% unless @expense_rows.empty? %>
+      <h3 class="section-heading">Expenses</h3>
+      <%= erb :"tracking/_category_table", locals: { rows: @expense_rows, kind: "expense", label: nil } %>
+    <% end %>
+
+    <% unless @income_rows.empty? %>
+      <h3 class="section-heading" style="margin-top:32px">Income</h3>
+      <%= erb :"tracking/_category_table", locals: { rows: @income_rows, kind: "income", label: nil } %>
+    <% end %>
+
+    <% unless @unbudgeted_rows.empty? %>
+      <h3 class="section-heading" style="margin-top:32px">Unbudgeted</h3>
+      <%= erb :"tracking/_category_table", locals: { rows: @unbudgeted_rows, kind: nil, label: "Amount" } %>
+    <% end %>
+
+    <div class="net-summary">
+      <div class="net-row">
+        <span class="net-label">Total income</span>
+        <span class="amount-positive">+<%= format("%.2f", total_income) %></span>
+      </div>
+      <div class="net-row">
+        <span class="net-label">Total expenses</span>
+        <span class="amount-negative"><%= format("%.2f", -total_expenses) %></span>
+      </div>
+      <div class="net-row net-row-total">
+        <span class="net-label">Net</span>
+        <span class="<%= net >= 0 ? "amount-positive" : "amount-negative" %>">
+          <strong><%= format("%.2f", net) %></strong>
+        </span>
+      </div>
+    </div>
+
+  <% end %>
+<% end %>
+
+<style>
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .month-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    min-width: 160px;
+    text-align: center;
+  }
+
+  .amount-positive { color: #86efac; }
+  .amount-negative { color: #f87171; }
+
+  .section-heading {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .tracking-table { margin-top: 0; }
+  .tracking-table td, .tracking-table th { vertical-align: middle; }
+
+  .cat-name { font-weight: 500; }
+  .uncategorized { color: #555; font-style: italic; }
+
+  .row-over td   { background: rgba(239,68,68,0.04); }
+  .row-under td  { background: rgba(134,239,172,0.03); }
+
+  .progress-cell {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #2a2a2a;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 80px;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .fill-under { background: #22c55e; }
+  .fill-over  { background: #ef4444; }
+  .pct-label  { font-size: 11px; color: #555; white-space: nowrap; min-width: 36px; }
+
+  .over-label  { color: #f87171; font-size: 12px; }
+  .under-label { color: #555;    font-size: 12px; }
+
+  .summary-row td {
+    border-top: 1px solid #2e2e2e;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .net-summary {
+    margin-top: 32px;
+    border-top: 1px solid #2e2e2e;
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 320px;
+    margin-left: auto;
+  }
+  .net-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .net-row-total {
+    border-top: 1px solid #2e2e2e;
+    padding-top: 8px;
+    margin-top: 4px;
+    font-size: 14px;
+  }
+  .net-label { color: #888; }
+</style>

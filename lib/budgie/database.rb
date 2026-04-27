@@ -30,9 +30,29 @@ module Budgie
       create_tables!
       migrate_v1_to_v2! if v1_schema?
       add_account_column!
+      add_processed_data_column!
+      add_monthly_budget_column!
+      add_manual_category_column!
+      add_kind_column!
+      add_transaction_unique_index!
     end
 
     def create_tables!
+      @connection.execute(<<~SQL)
+        CREATE TABLE IF NOT EXISTS transactions (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          account       TEXT    NOT NULL,
+          date          TEXT    NOT NULL,
+          amount        REAL    NOT NULL,
+          other_party   TEXT,
+          description   TEXT,
+          reference     TEXT,
+          particulars   TEXT,
+          analysis_code TEXT,
+          uploaded_at   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+        )
+      SQL
+
       @connection.execute(<<~SQL)
         CREATE TABLE IF NOT EXISTS rules (
           id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +126,57 @@ module Budgie
       @connection.execute("ALTER TABLE rules ADD COLUMN account TEXT NOT NULL DEFAULT ''")
     rescue SQLite3::Exception => e
       raise unless e.message.include?("duplicate column name")
+    end
+
+    def add_processed_data_column!
+      @connection.execute("ALTER TABLE transactions ADD COLUMN processed_data TEXT")
+    rescue SQLite3::Exception => e
+      raise unless e.message.include?("duplicate column name") ||
+                   e.message.include?("no such table")
+    end
+
+    def add_monthly_budget_column!
+      @connection.execute("ALTER TABLE rules ADD COLUMN monthly_budget REAL")
+    rescue SQLite3::Exception => e
+      raise unless e.message.include?("duplicate column name")
+    end
+
+    def add_manual_category_column!
+      @connection.execute("ALTER TABLE transactions ADD COLUMN manual_category TEXT")
+    rescue SQLite3::Exception => e
+      raise unless e.message.include?("duplicate column name") ||
+                   e.message.include?("no such table")
+    end
+
+    def add_kind_column!
+      @connection.execute("ALTER TABLE rules ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'")
+    rescue SQLite3::Exception => e
+      raise unless e.message.include?("duplicate column name")
+    end
+
+    def add_transaction_unique_index!
+      return if @connection.execute("PRAGMA index_info(idx_transactions_unique)").any?
+
+      # Remove duplicates keeping the row that has a manual_category set, else the earliest row.
+      @connection.execute(<<~SQL)
+        DELETE FROM transactions WHERE id NOT IN (
+          SELECT COALESCE(MIN(CASE WHEN manual_category IS NOT NULL THEN id END), MIN(id))
+          FROM transactions
+          GROUP BY account, date, amount,
+                   COALESCE(other_party,''),   COALESCE(description,''),
+                   COALESCE(reference,''),     COALESCE(particulars,''),
+                   COALESCE(analysis_code,'')
+        )
+      SQL
+
+      @connection.execute(<<~SQL)
+        CREATE UNIQUE INDEX idx_transactions_unique ON transactions (
+          account, date, amount,
+          COALESCE(other_party,''),   COALESCE(description,''),
+          COALESCE(reference,''),     COALESCE(particulars,''),
+          COALESCE(analysis_code,'')
+        )
+      SQL
     end
   end
 end

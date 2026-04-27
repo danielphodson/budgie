@@ -1,0 +1,263 @@
+<div class="page-header">
+  <h2>Transactions</h2>
+  <div class="actions">
+    <form method="post" action="/transactions/reprocess" style="display:inline">
+      <button type="submit" class="btn btn-secondary">Re-process</button>
+    </form>
+    <a href="/transactions/upload" class="btn btn-primary">Import CSV</a>
+  </div>
+</div>
+
+<% if @imported %>
+  <div class="success-banner"><%= h(@imported) %> row(s) imported and processed.</div>
+<% end %>
+
+<% if @months.empty? %>
+  <p class="empty">No transactions yet. <a href="/transactions/upload">Import a CSV</a> to get started.</p>
+<% else %>
+  <div class="month-nav">
+    <a href="/transactions?month=<%= h(@prev_month) %><%= @category_filter.empty? ? "" : "&category=#{Rack::Utils.escape(@category_filter)}" %>" class="btn btn-secondary">&larr;</a>
+    <span class="month-label"><%= h(format_month(@month)) %></span>
+    <a href="/transactions?month=<%= h(@next_month) %><%= @category_filter.empty? ? "" : "&category=#{Rack::Utils.escape(@category_filter)}" %>" class="btn btn-secondary">&rarr;</a>
+
+    <select class="category-filter-select" onchange="
+      var url = '/transactions?month=<%= h(@month) %>';
+      if (this.value) url += '&category=' + encodeURIComponent(this.value);
+      window.location = url;
+    ">
+      <option value="">All categories</option>
+      <option value="__uncategorized__"<%= @category_filter == "__uncategorized__" ? " selected" : "" %>>Uncategorized</option>
+      <% @categories.each do |cat| %>
+        <option value="<%= h(cat) %>"<%= @category_filter == cat ? " selected" : "" %>><%= h(cat) %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <% if @transactions.empty? %>
+    <p class="empty" style="margin-top:24px">No transactions for this month.</p>
+  <% else %>
+    <%
+      require "json"
+
+      # Collect extra rule-generated columns excluding Category (handled separately)
+      extra_cols = @transactions.flat_map { |t|
+        t["processed_data"] ? JSON.parse(t["processed_data"]).keys : []
+      }.uniq.sort.reject { |c| c == "Category" }
+
+      total  = @transactions.sum { |t| t["amount"] }
+      debit  = @transactions.select { |t| t["amount"] < 0 }.sum { |t| t["amount"] }
+      credit = @transactions.select { |t| t["amount"] > 0 }.sum { |t| t["amount"] }
+    %>
+    <table style="margin-top:24px">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Account</th>
+          <th>Other Party</th>
+          <th>Description</th>
+          <th>Particulars</th>
+          <th>Category</th>
+          <% extra_cols.each do |col| %>
+            <th><%= h(col) %></th>
+          <% end %>
+          <th style="text-align:right">Amount</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @transactions.each do |t| %>
+          <% extras = t["processed_data"] ? JSON.parse(t["processed_data"]) : {} %>
+          <% manual    = t["manual_category"] %>
+          <% rule_cat  = extras["Category"] %>
+          <% current   = manual || rule_cat %>
+          <tr>
+            <td><%= h(t["date"]) %></td>
+            <td><span class="account-tag account-<%= h(t["account"].downcase.gsub(" ", "-")) %>"><%= h(t["account"]) %></span></td>
+            <td><%= h(t["other_party"]) %></td>
+            <td><%= h(t["description"]) %></td>
+            <td style="color:#666"><%= h(t["particulars"]) %></td>
+            <td class="category-cell">
+              <div class="category-wrap<%= manual ? " is-manual" : "" %>">
+                <% if manual %>
+                  <span class="manual-dot" title="Manually set">&#x25CF;</span>
+                <% end %>
+                <select class="category-select" data-id="<%= t["id"] %>">
+                  <option value="">—</option>
+                  <% @categories.each do |cat| %>
+                    <option value="<%= h(cat) %>"<%= current == cat ? " selected" : "" %>><%= h(cat) %></option>
+                  <% end %>
+                  <% if current && !@categories.include?(current) %>
+                    <option value="<%= h(current) %>" selected><%= h(current) %></option>
+                  <% end %>
+                </select>
+              </div>
+            </td>
+            <% extra_cols.each do |col| %>
+              <td><code><%= h(extras[col]) %></code></td>
+            <% end %>
+            <td style="text-align:right" class="<%= t["amount"] >= 0 ? "amount-positive" : "amount-negative" %>">
+              <%= format("%.2f", t["amount"]) %>
+            </td>
+            <td style="width:24px">
+              <% unless current %>
+                <a href="/rules/new?source_col=Other+Party&pattern=<%= Rack::Utils.escape(t["other_party"].to_s) %>"
+                   title="Add rule for this transaction" class="add-rule-btn">+</a>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="<%= 6 + extra_cols.size %>" style="color:#888;font-size:12px;padding-top:12px">
+            <%= @transactions.size %> transactions &nbsp;&middot;&nbsp;
+            <span class="amount-positive">+<%= format("%.2f", credit) %></span>
+            &nbsp;
+            <span class="amount-negative"><%= format("%.2f", debit) %></span>
+          </td>
+          <td style="text-align:right;padding-top:12px" class="<%= total >= 0 ? "amount-positive" : "amount-negative" %>">
+            <strong><%= format("%.2f", total) %></strong>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  <% end %>
+<% end %>
+
+<style>
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .month-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    min-width: 160px;
+    text-align: center;
+  }
+  .category-filter-select {
+    margin-left: 16px;
+    width: auto;
+    min-width: 140px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .amount-positive { color: #86efac; }
+  .amount-negative { color: #f87171; }
+
+  .account-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    background: #1e1e1e;
+    color: #888;
+    border: 1px solid #2e2e2e;
+  }
+  .account-tag.account-floating     { color: #7eb8f7; border-color: #1d3a5e; }
+  .account-tag.account-savings      { color: #86efac; border-color: #14532d; }
+  .account-tag.account-direct       { color: #fcd34d; border-color: #4a3200; }
+  .account-tag.account-credit-card  { color: #f87171; border-color: #4a1515; }
+
+  .add-rule-btn {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 3px;
+    border: 1px solid #3a3a3a;
+    color: #555;
+    font-size: 14px;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s;
+  }
+  tr:hover .add-rule-btn { opacity: 1; }
+  .add-rule-btn:hover { color: #7eb8f7; border-color: #7eb8f7; text-decoration: none; }
+
+  /* Category picklist */
+  .category-cell { padding: 4px 12px; }
+
+  .category-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .category-select {
+    width: auto;
+    min-width: 90px;
+    padding: 3px 6px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: #a8d8a8;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .category-select:hover,
+  .category-select:focus {
+    background: #1a1a1a;
+    border-color: #3a3a3a;
+    outline: none;
+  }
+  /* Empty / unset */
+  .category-select option[value=""] { color: #555; }
+  .category-select:has(option[value=""]:checked) { color: #555; }
+
+  /* Manual override indicator */
+  .manual-dot {
+    font-size: 7px;
+    color: #fbbf24;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .is-manual .category-select {
+    color: #fbbf24;
+  }
+
+  /* Saving state */
+  .category-select.saving {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+  document.querySelectorAll(".category-select").forEach(function(sel) {
+    sel.addEventListener("change", function() {
+      var wrap = sel.closest(".category-wrap");
+      var id   = sel.dataset.id;
+      sel.classList.add("saving");
+
+      fetch("/transactions/" + id + "/category", {
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body:    "category=" + encodeURIComponent(sel.value)
+      }).then(function() {
+        sel.classList.remove("saving");
+        var dot = wrap.querySelector(".manual-dot");
+        if (sel.value === "") {
+          wrap.classList.remove("is-manual");
+          sel.style.color = "";
+          if (dot) dot.remove();
+        } else {
+          wrap.classList.add("is-manual");
+          if (!dot) {
+            dot = document.createElement("span");
+            dot.className = "manual-dot";
+            dot.title = "Manually set";
+            dot.innerHTML = "&#x25CF;";
+            wrap.insertBefore(dot, sel);
+          }
+        }
+      }).catch(function() {
+        sel.classList.remove("saving");
+      });
+    });
+  });
+</script>

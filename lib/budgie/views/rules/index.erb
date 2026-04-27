@@ -9,28 +9,22 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Account</th>
-        <th>Output col</th>
-        <th>Output value</th>
+        <th>Category</th>
+        <th>Monthly budget</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       <% @rules.each do |rule| %>
         <tr>
-          <td><%= rule.id %></td>
-          <td><%= h rule.name %></td>
-          <td><%= h rule.account %></td>
-          <td><%= h rule.output_col %></td>
           <td><%= h rule.output_value %></td>
+          <td><%= rule.monthly_budget ? "$#{"%.2f" % rule.monthly_budget}" : "" %></td>
           <td>
             <div class="actions">
               <a href="/rules/<%= rule.id %>/copy" class="btn btn-secondary">Copy</a>
               <a href="/rules/<%= rule.id %>/edit" class="btn btn-secondary">Edit</a>
               <form method="post" action="/rules/<%= rule.id %>/delete"
-                    onsubmit="return confirm('Delete \u201c<%= h rule.name %>\u201d?')">
+                    onsubmit="return confirm('Delete \u201c<%= h rule.output_value %>\u201d?')">
                 <button type="submit" class="btn btn-danger">Delete</button>
               </form>
             </div>
