@@ -14,8 +14,7 @@ module Budgie
         Budgie::Server.set(:db_path, options[:db])
         Budgie::Server.set(:port, options[:port])
         Budgie::Server.set(:bind, options[:host])
-        Budgie::Server.set(:protection, except: :host_authorization) if options[:host] != "localhost"
-        Budgie::Server.set(:logging, false)
+Budgie::Server.set(:logging, false)
         say "Starting Budgie web UI at http://#{options[:host]}:#{options[:port]}"
         say "Database: #{options[:db]}"
         say "Press Ctrl+C to stop."

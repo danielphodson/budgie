@@ -3,6 +3,7 @@ require "sinatra/base"
 module Budgie
   class Server < Sinatra::Base
     enable :method_override
+    set :protection, except: :host_authorization
 
     set :views,   File.join(__dir__, "views")
     set :db_path, Budgie::Database::DEFAULT_PATH
