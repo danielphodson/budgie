@@ -1,0 +1,26 @@
+[Unit]
+Description=Budgie Server
+Documentation=https://github.com/danielphodson/budgie
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=daniel
+WorkingDirectory=/home/daniel/git/budgie
+Environment="PATH=/home/daniel/.rbenv/shims:/home/daniel/.rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/daniel/git/budgie/bin/budgie-server start
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/daniel/budgie.data
+
+[Install]
+WantedBy=multi-user.target

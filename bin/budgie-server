@@ -1,0 +1,40 @@
+#!/bin/bash
+# Budgie server control script
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PORT=${BUDGIE_PORT:-4567}
+HOST=${BUDGIE_HOST:-0.0.0.0}
+DB_PATH=${BUDGIE_DB:-}
+
+cd "$SCRIPT_DIR"
+
+case "${1:-start}" in
+  start)
+    echo "Starting Budgie server on $HOST:$PORT..."
+    if [ -n "$DB_PATH" ]; then
+      bundle exec exe/budgie server start --host "$HOST" --port "$PORT" --db "$DB_PATH"
+    else
+      bundle exec exe/budgie server start --host "$HOST" --port "$PORT"
+    fi
+    ;;
+  stop)
+    echo "Stopping Budgie server..."
+    pkill -f "bundle exec exe/budgie server start" || echo "No running server found"
+    ;;
+  restart)
+    "$0" stop
+    sleep 1
+    "$0" start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    echo ""
+    echo "Environment variables:"
+    echo "  BUDGIE_PORT (default: 4567)"
+    echo "  BUDGIE_HOST (default: 0.0.0.0)"
+    echo "  BUDGIE_DB   (optional database path)"
+    exit 1
+    ;;
+esac

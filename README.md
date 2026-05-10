@@ -49,13 +49,65 @@ When you process a CSV, budgie evaluates every rule against every row. Matching 
 
 ## Web UI
 
-The easiest way to manage rules and process files is via the built-in web interface:
+The easiest way to manage rules and process files is via the built-in web interface.
+
+### Quick Start
+
+For local development:
 
 ```sh
-budgie server start
+bundle exec exe/budgie server start
 ```
 
-Then open [http://localhost:4567](http://localhost:4567) in your browser.
+For remote access (allows connections from other machines):
+
+```sh
+bundle exec exe/budgie server start --host 0.0.0.0
+```
+
+### Production Service
+
+For production deployment, use the provided control script:
+
+```sh
+# Start the server
+./bin/budgie-server start
+
+# Stop the server
+./bin/budgie-server stop
+
+# Restart the server
+./bin/budgie-server restart
+```
+
+You can customize the host and port with environment variables:
+
+```sh
+BUDGIE_HOST=127.0.0.1 BUDGIE_PORT=8080 ./bin/budgie-server start
+```
+
+### Systemd Service (Recommended for Production)
+
+For automatic startup and management, install as a systemd service:
+
+```sh
+sudo cp budgie.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable budgie
+sudo systemctl start budgie
+```
+
+Manage the service:
+
+```sh
+sudo systemctl status budgie        # Check status
+sudo systemctl restart budgie       # Restart
+sudo journalctl -u budgie -f        # View logs
+```
+
+See [SYSTEMD_SETUP.md](SYSTEMD_SETUP.md) for detailed instructions.
+
+Then open [http://localhost:4567](http://localhost:4567) in your browser (or your server's hostname/port for remote access).
 
 **Options:**
 
@@ -164,4 +216,4 @@ bundle exec rspec
 ## Requirements
 
 - Ruby >= 3.1
-- Dependencies: `thor`, `sqlite3`, `csv`, `sinatra`
+- Dependencies: `thor`, `sqlite3`, `csv`, `sinatra`, `rackup`

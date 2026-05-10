@@ -8,7 +8,7 @@ module Budgie
   # request handler in a web frontend) should instantiate its own Database
   # object rather than sharing one across threads.
   class Database
-    DEFAULT_PATH = File.join(Dir.home, "Documents", "budgie", "budgie.db")
+    DEFAULT_PATH = File.join(Dir.home,"budgie.data", "budgie.db")
 
     attr_reader :connection
 
