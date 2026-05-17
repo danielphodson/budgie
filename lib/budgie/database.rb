@@ -163,18 +163,18 @@ module Budgie
           SELECT COALESCE(MIN(CASE WHEN manual_category IS NOT NULL THEN id END), MIN(id))
           FROM transactions
           GROUP BY account, date, amount,
-                   COALESCE(other_party,''),   COALESCE(description,''),
-                   COALESCE(reference,''),     COALESCE(particulars,''),
-                   COALESCE(analysis_code,'')
+                   LOWER(COALESCE(other_party,'')),   LOWER(COALESCE(description,'')),
+                   LOWER(COALESCE(reference,'')),     LOWER(COALESCE(particulars,'')),
+                   LOWER(COALESCE(analysis_code,''))
         )
       SQL
 
       @connection.execute(<<~SQL)
         CREATE UNIQUE INDEX idx_transactions_unique ON transactions (
           account, date, amount,
-          COALESCE(other_party,''),   COALESCE(description,''),
-          COALESCE(reference,''),     COALESCE(particulars,''),
-          COALESCE(analysis_code,'')
+          LOWER(COALESCE(other_party,'')),   LOWER(COALESCE(description,'')),
+          LOWER(COALESCE(reference,'')),     LOWER(COALESCE(particulars,'')),
+          LOWER(COALESCE(analysis_code,''))
         )
       SQL
     end
