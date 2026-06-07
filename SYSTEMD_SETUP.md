@@ -46,6 +46,53 @@ Stop:
 sudo systemctl stop budgie
 ```
 
+## Automatic Database Backups
+
+Budgie includes a weekly backup timer to automatically back up the SQLite database every Sunday at 2 AM.
+
+### Installation
+
+1. Copy the backup service and timer files:
+```bash
+sudo cp budgie-backup.service /etc/systemd/system/
+sudo cp budgie-backup.timer /etc/systemd/system/
+```
+
+2. Reload systemd:
+```bash
+sudo systemctl daemon-reload
+```
+
+3. Enable and start the timer:
+```bash
+sudo systemctl enable budgie-backup.timer
+sudo systemctl start budgie-backup.timer
+```
+
+### Managing Backups
+
+Check timer status:
+```bash
+sudo systemctl status budgie-backup.timer
+```
+
+View next scheduled backup:
+```bash
+sudo systemctl list-timers budgie-backup.timer
+```
+
+View backup logs:
+```bash
+sudo journalctl -u budgie-backup.service -f
+```
+
+Manually trigger a backup:
+```bash
+sudo systemctl start budgie-backup.service
+```
+
+Backups are stored in `~/budgie.data/backups/` and the most recent 7 backups are retained.
+
 ## Configuration
 
 The service uses the default settings from `bin/budgie-server`. To customize, set environment variables in the service file or edit the line:

@@ -9,11 +9,31 @@ module Budgie
     def insert_batch(transactions)
       inserted = 0
       stmt = @db.prepare(<<~SQL)
-        INSERT OR IGNORE INTO transactions (account, date, amount, other_party, description, reference, particulars, analysis_code)
+        INSERT INTO transactions (account, date, amount, other_party, description, reference, particulars, analysis_code)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       SQL
       @db.transaction do
         transactions.each do |t|
+          # Check if this transaction already exists using the same logic as the unique index
+          existing = @db.execute(<<~SQL, [
+            t[:account], t[:date], t[:amount],
+            normalize_for_index(t[:other_party]),
+            normalize_for_index(t[:description]),
+            normalize_for_index(t[:reference]),
+            normalize_for_index(t[:particulars]),
+            normalize_for_index(t[:analysis_code])
+          ])
+            SELECT id FROM transactions
+            WHERE account = ? AND date = ? AND amount = ?
+              AND LOWER(COALESCE(other_party,'')) = ?
+              AND LOWER(COALESCE(description,'')) = ?
+              AND LOWER(COALESCE(reference,'')) = ?
+              AND LOWER(COALESCE(particulars,'')) = ?
+              AND LOWER(COALESCE(analysis_code,'')) = ?
+            LIMIT 1
+          SQL
+          next if existing.any?
+          
           stmt.execute(
             t[:account], t[:date], t[:amount],
             t[:other_party], t[:description],
@@ -25,6 +45,13 @@ module Budgie
       inserted
     ensure
       stmt&.close
+    end
+
+    private
+
+    def normalize_for_index(val)
+      # Mirrors the LOWER(COALESCE(...,'')) logic used in the unique index
+      (val || '').downcase
     end
 
     def available_months

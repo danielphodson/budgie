@@ -1,11 +1,14 @@
-<h2>New Rule</h2>
+<h2><%= @show_rule_fields ? "New rule" : "New category" %></h2>
 
 <div class="form-card">
   <% if @error %>
     <div class="error-banner"><%= h @error %></div>
   <% end %>
 
-  <form method="post" action="/rules">
+  <form method="post" action="/categories">
+    <input type="hidden" name="month" value="<%= h @return_month %>">
+    <input type="hidden" name="category" value="<%= h @return_category %>">
+
     <div class="form-group">
       <label for="output_value">Category</label>
       <input type="text" id="output_value" name="output_value"
@@ -33,39 +36,33 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="monthly_budget">Monthly budget (optional)</label>
-      <input type="number" id="monthly_budget" name="monthly_budget"
-             value="<%= h @submitted["monthly_budget"] %>"
-             placeholder="e.g. 500.00"
-             step="0.01" min="0">
-    </div>
+    <% if @show_rule_fields %>
+      <fieldset>
+        <legend>Rule</legend>
 
-    <fieldset>
-      <legend>First pattern</legend>
+        <div class="form-group">
+          <label for="source_col">Source column</label>
+          <select id="source_col" name="source_col">
+            <% ["Other Party", "Description", "Particulars"].each do |col| %>
+              <option value="<%= h col %>" <%= "selected" if @submitted["source_col"] == col %>><%= h col %></option>
+            <% end %>
+          </select>
+        </div>
 
-      <div class="form-group">
-        <label for="source_col">Source column</label>
-        <select id="source_col" name="source_col">
-          <% ["Other Party", "Description", "Particulars"].each do |col| %>
-            <option value="<%= h col %>" <%= "selected" if @submitted["source_col"] == col %>><%= h col %></option>
-          <% end %>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="pattern">Pattern</label>
-        <input type="text" id="pattern" name="pattern"
-               value="<%= h @submitted["pattern"] %>"
-               placeholder="e.g. Loan repayment"
-               class="<%= @error ? "input-error" : "" %>">
-        <p class="field-hint">Plain text substring match. Case-insensitive.</p>
-      </div>
-    </fieldset>
+        <div class="form-group">
+          <label for="pattern">Pattern</label>
+          <input type="text" id="pattern" name="pattern"
+                 value="<%= h @submitted["pattern"] %>"
+                 placeholder="e.g. Loan repayment"
+                 class="<%= @error ? "input-error" : "" %>">
+          <p class="field-hint">Plain text substring match. Case-insensitive.</p>
+        </div>
+      </fieldset>
+    <% end %>
 
     <div class="actions">
-      <button type="submit" class="btn btn-primary">Create rule</button>
-      <a href="/rules" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary"><%= @show_rule_fields ? "Create new rule" : "Create category" %></button>
+      <a href="/categories" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>

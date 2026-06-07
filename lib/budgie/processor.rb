@@ -1,19 +1,19 @@
 require "csv"
 
 module Budgie
-  # Core CSV transform engine. Takes a RuleRepository so it is fully
+  # Core CSV transform engine. Takes a CategoryRepository so it is fully
   # testable with a stub. No file I/O in the constructor.
   class Processor
-    def initialize(rule_repository:)
-      @repo = rule_repository
+    def initialize(category_repository:)
+      @repo = category_repository
     end
 
     # Reads input_path, applies rules, writes augmented rows to output_path.
     # Returns a result hash: { rows_processed:, columns_added: }
     def process(input_path:, output_path:)
-      rules = @repo.all
+      categories = @repo.all
 
-      compiled_rules = rules.map { |rule| [rule, rule.patterns] }
+      compiled_categories = categories.map { |category| [category, category.rules] }
 
       table = CSV.read(input_path, headers: true)
       original_headers = table.headers
@@ -23,15 +23,15 @@ module Budgie
 
       table.each do |row|
         extras = {}
-        compiled_rules.each do |rule, compiled_patterns|
-          # Rule fires if any of its patterns matches the corresponding column.
-          next unless compiled_patterns.any? { |p| p.matches?(row[p.source_col]) }
+        compiled_categories.each do |category, compiled_rules|
+          # Category rule fires if any of its rule patterns matches the corresponding column.
+          next unless compiled_rules.any? { |pattern| pattern.matches?(row[pattern.source_col]) }
 
-          # Last matching rule wins when multiple rules share an output_col.
-          extras["account"]       = rule.account if rule.account && !rule.account.empty?
-          extras[rule.output_col] = rule.output_value
+          # Last matching category wins when multiple categories share an output_col.
+          extras["account"]         = category.account if category.account && !category.account.empty?
+          extras[category.output_col] = category.output_value
 
-          extra_col_set << rule.output_col unless extra_col_set.include?(rule.output_col)
+          extra_col_set << category.output_col unless extra_col_set.include?(category.output_col)
         end
         augmented << row.to_h.merge(extras)
       end

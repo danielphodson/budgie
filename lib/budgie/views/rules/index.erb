@@ -1,10 +1,10 @@
 <div class="page-header">
-  <h2>Rules</h2>
-  <a href="/rules/new" class="btn btn-primary">+ New rule</a>
+  <h2>Categories</h2>
+  <a href="/categories/new" class="btn btn-primary">+ New category</a>
 </div>
 
-<% if @rules.empty? %>
-  <p class="empty">No rules defined yet. <a href="/rules/new">Create the first one</a>.</p>
+<% if @categories.empty? %>
+  <p class="empty">No categories defined yet. <a href="/categories/new">Create the first one</a>.</p>
 <% else %>
   <table>
     <thead>
@@ -15,16 +15,16 @@
       </tr>
     </thead>
     <tbody>
-      <% @rules.each do |rule| %>
+      <% @categories.each do |category| %>
         <tr>
-          <td><%= h rule.output_value %></td>
-          <td><%= rule.monthly_budget ? "$#{"%.2f" % rule.monthly_budget}" : "" %></td>
+          <td><%= h category.output_value %></td>
+          <td><%= category.monthly_budget ? "$#{"%.2f" % category.monthly_budget}" : "" %></td>
           <td>
             <div class="actions">
-              <a href="/rules/<%= rule.id %>/copy" class="btn btn-secondary">Copy</a>
-              <a href="/rules/<%= rule.id %>/edit" class="btn btn-secondary">Edit</a>
-              <form method="post" action="/rules/<%= rule.id %>/delete"
-                    onsubmit="return confirm('Delete \u201c<%= h rule.output_value %>\u201d?')">
+              <a href="/categories/<%= category.id %>/copy" class="btn btn-secondary">Copy</a>
+              <a href="/categories/<%= category.id %>/edit" class="btn btn-secondary">Edit</a>
+              <form method="post" action="/categories/<%= category.id %>/delete"
+                    onsubmit="return confirm('Delete \u201c<%= h category.output_value %>\u201d?')">
                 <button type="submit" class="btn btn-danger">Delete</button>
               </form>
             </div>

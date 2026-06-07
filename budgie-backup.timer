@@ -1,0 +1,14 @@
+[Unit]
+Description=Weekly Budgie Database Backup
+Requires=budgie-backup.service
+
+[Timer]
+# Run weekly on Sundays at 2 AM
+OnCalendar=Sun *-*-* 02:00:00
+# Randomize start time within 30 minutes to avoid thundering herd
+RandomizedDelaySec=30min
+# Run on boot if system was off
+Persistent=true
+
+[Install]
+WantedBy=timers.target

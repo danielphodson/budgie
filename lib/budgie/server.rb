@@ -15,7 +15,7 @@ module Budgie
 
       def repo
         db = Budgie::Database.new(db_path: settings.db_path)
-        Budgie::RuleRepository.new(db)
+        Budgie::CategoryRepository.new(db)
       end
 
       def transaction_repo
@@ -24,7 +24,7 @@ module Budgie
       end
 
       def transaction_processor(trepo)
-        Budgie::TransactionProcessor.new(rule_repository: repo, transaction_repository: trepo)
+        Budgie::TransactionProcessor.new(category_repository: repo, transaction_repository: trepo)
       end
 
       def adjacent_month(year_month, delta)
@@ -51,36 +51,65 @@ module Budgie
     # ── Routes ────────────────────────────────────────────────────────────
 
     get "/" do
-      redirect "/rules"
+      redirect "/categories"
     end
 
     get "/rules" do
-      @rules = repo.all
+      redirect "/categories"
+    end
+
+    get "/categories" do
+      @categories = repo.all
       erb :"rules/index"
     end
 
     get "/rules/new" do
+      redirect "/categories/new"
+    end
+
+    get "/categories/new" do
+      @show_rule_fields = params["source_col"] || params["pattern"]
       @submitted  = {
-        "source_col"     => params["source_col"]     || "Other Party",
-        "pattern"        => params["pattern"]        || "",
         "output_value"   => params["output_value"]   || "",
         "monthly_budget" => params["monthly_budget"] || "",
-        "kind"           => params["kind"]           || "expense"
+        "kind"           => params["kind"]           || "expense",
+        "source_col"     => params["source_col"]     || (@show_rule_fields ? "Other Party" : "Other Party"),
+        "pattern"        => params["pattern"]        || ""
       }
-      @categories = repo.all.map(&:output_value).uniq.sort
-      @error      = nil
+      @categories      = repo.all.map(&:output_value).uniq.sort
+      @return_month    = params["month"]
+      @return_category = params["category"].to_s
+      @error           = nil
       erb :"rules/new"
     end
 
-    post "/rules" do
-      r        = repo
-      existing = r.all.find { |rule| rule.output_value == params["output_value"] }
+    post "/categories" do
+      @return_month    = params["month"]
+      @return_category = params["category"].to_s
+      r                = repo
+      existing         = r.all.find { |category| category.output_value == params["output_value"] }
+      rule_source      = params["source_col"].to_s
+      rule_pattern     = params["pattern"].to_s
+      show_rule_fields = params.key?("source_col") || params.key?("pattern")
+      has_rule         = !rule_pattern.strip.empty?
+
+      raise Budgie::InvalidPattern, "Pattern cannot be empty" if show_rule_fields && !has_rule
 
       if existing
-        r.add_pattern(existing.id, source_col: params["source_col"], pattern: params["pattern"])
-        redirect "/rules/#{existing.id}/edit"
+        if has_rule
+          r.add_rule(existing.id, source_col: rule_source, pattern: rule_pattern)
+          transaction_processor(transaction_repo).reprocess_all
+          redirect_url = "/transactions"
+          query = []
+          query << "month=#{Rack::Utils.escape(@return_month)}" if @return_month && !@return_month.empty?
+          query << "category=#{Rack::Utils.escape(@return_category)}" if @return_category && !@return_category.empty?
+          redirect redirect_url + (query.empty? ? "" : "?#{query.join("&")}")
+        else
+          redirect "/categories/#{existing.id}/edit"
+        end
       else
         budget = params["monthly_budget"].to_s.strip
+        rules = has_rule ? [{ source_col: rule_source, pattern: rule_pattern }] : []
         r.create(
           name:           params["output_value"],
           account:        "",
@@ -88,39 +117,57 @@ module Budgie
           output_value:   params["output_value"],
           monthly_budget: budget.empty? ? nil : budget.to_f,
           kind:           params["kind"] == "income" ? "income" : "expense",
-          patterns:       [{ source_col: params["source_col"], pattern: params["pattern"] }]
+          rules:          rules
         )
-        redirect "/rules"
+
+        transaction_processor(transaction_repo).reprocess_all
+        redirect_url = "/transactions"
+        query = []
+        query << "month=#{Rack::Utils.escape(@return_month)}" if @return_month && !@return_month.empty?
+        query << "category=#{Rack::Utils.escape(@return_category)}" if @return_category && !@return_category.empty?
+        redirect redirect_url + (query.empty? ? "" : "?#{query.join("&")}")
       end
     rescue Budgie::InvalidPattern => e
-      @error     = e.message
-      @submitted = params
-      @categories = repo.all.map(&:output_value).uniq.sort
+      @error           = e.message
+      @show_rule_fields = params.key?("source_col") || params.key?("pattern")
+      @submitted       = params
+      @categories      = repo.all.map(&:output_value).uniq.sort
       erb :"rules/new"
     end
 
     get "/rules/:id/edit" do
-      @rule      = repo.find(Integer(params[:id]))
+      redirect "/categories/#{params[:id]}/edit"
+    end
+
+    get "/categories/:id/edit" do
+      @category  = repo.find(Integer(params[:id]))
+      @rule      = @category
       @error     = nil
       erb :"rules/edit"
-    rescue Budgie::RuleNotFound
-      halt 404, "Rule not found"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Category not found"
     end
 
     get "/rules/:id/copy" do
+      redirect "/categories/#{params[:id]}/copy"
+    end
+
+    get "/categories/:id/copy" do
       source     = repo.find(Integer(params[:id]))
+      @category  = source
+      @rule      = source
       @submitted = {
         "output_value" => source.output_value,
-        "source_col"   => source.patterns.first&.source_col.to_s,
-        "pattern"      => source.patterns.first&.pattern.to_s
+        "source_col"   => source.rules.first&.source_col.to_s,
+        "pattern"      => source.rules.first&.pattern.to_s
       }
       @error = nil
       erb :"rules/new"
-    rescue Budgie::RuleNotFound
-      halt 404, "Rule not found"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Category not found"
     end
 
-    patch "/rules/:id" do
+    patch "/categories/:id" do
       budget = params["monthly_budget"].to_s.strip
       repo.update(Integer(params[:id]), {
         name:           params["output_value"],
@@ -130,40 +177,41 @@ module Budgie
         monthly_budget: budget.empty? ? nil : budget.to_f,
         kind:           params["kind"] == "income" ? "income" : "expense"
       })
-      redirect "/rules"
-    rescue Budgie::RuleNotFound
-      halt 404, "Rule not found"
+      redirect "/categories"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Category not found"
     end
 
-    post "/rules/:id/delete" do
+    post "/categories/:id/delete" do
       repo.delete(Integer(params[:id]))
-      redirect "/rules"
-    rescue Budgie::RuleNotFound
-      halt 404, "Rule not found"
+      redirect "/categories"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Category not found"
     end
 
-    # ── Pattern routes ────────────────────────────────────────────────────
+    # ── Rules ───────────────────────────────────────────────────────────
 
-    post "/rules/:id/patterns" do
-      repo.add_pattern(
+    post "/categories/:id/rules" do
+      repo.add_rule(
         Integer(params[:id]),
         source_col: params["source_col"],
         pattern:    params["pattern"]
       )
-      redirect "/rules/#{params[:id]}/edit"
-    rescue Budgie::RuleNotFound
-      halt 404, "Rule not found"
+      redirect "/categories/#{params[:id]}/edit"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Category not found"
     rescue Budgie::InvalidPattern => e
-      @rule  = repo.find(Integer(params[:id]))
+      @category  = repo.find(Integer(params[:id]))
+      @rule      = @category
       @error = e.message
       erb :"rules/edit"
     end
 
-    post "/rules/:id/patterns/:pattern_id/delete" do
-      repo.delete_pattern(Integer(params[:pattern_id]))
-      redirect "/rules/#{params[:id]}/edit"
-    rescue Budgie::RuleNotFound
-      halt 404, "Pattern not found"
+    post "/categories/:id/rules/:rule_id/delete" do
+      repo.delete_rule(Integer(params[:rule_id]))
+      redirect "/categories/#{params[:id]}/edit"
+    rescue Budgie::CategoryNotFound
+      halt 404, "Rule not found"
     end
 
     # ── Tracking ─────────────────────────────────────────────────────────
@@ -177,16 +225,19 @@ module Budgie
       @prev_month = adjacent_month(@month, -1)
       @next_month = adjacent_month(@month,  1)
 
-      rules        = repo.all
-      transactions = @month ? trepo.for_month(@month) : []
+      rules          = repo.all
+      transactions   = @month ? trepo.for_month(@month) : []
 
-      # Sum amounts by effective category for the month
-      totals = Hash.new(0.0)
+      # Count and sum amounts by effective category for the month
+      totals               = Hash.new(0.0)
+      uncategorized_count  = 0
       transactions.each do |t|
         extras = t["processed_data"] ? JSON.parse(t["processed_data"]) : {}
         cat    = t["manual_category"] || extras["Category"]
+        uncategorized_count += 1 if cat.nil?
         totals[cat || :uncategorized] += t["amount"]
       end
+      @uncategorized_count = uncategorized_count
 
       # Build lookup: output_value -> { budget, kind }
       rule_meta = rules.each_with_object({}) do |r, h|

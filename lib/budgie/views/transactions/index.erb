@@ -100,8 +100,23 @@
             </td>
             <td style="width:24px">
               <% unless current %>
-                <a href="/rules/new?source_col=Other+Party&pattern=<%= Rack::Utils.escape(t["other_party"].to_s) %>"
-                   title="Add rule for this transaction" class="add-rule-btn">+</a>
+                <% source_col = "Other Party" %>
+                <% pattern_value = t["other_party"].to_s.strip %>
+                <% if pattern_value.empty? %>
+                  <% pattern_value = t["description"].to_s.strip %>
+                  <% source_col = "Description" unless pattern_value.empty? %>
+                <% end %>
+                <% if pattern_value.empty? %>
+                  <% pattern_value = t["particulars"].to_s.strip %>
+                  <% source_col = "Particulars" unless pattern_value.empty? %>
+                <% end %>
+                <% query = [] %>
+                <% query << "month=#{h @month}" if @month && !@month.empty? %>
+                <% query << "category=#{Rack::Utils.escape(@category_filter)}" if @category_filter && !@category_filter.empty? %>
+                <% query << "source_col=#{Rack::Utils.escape(source_col)}" if source_col && !source_col.empty? %>
+                <% query << "pattern=#{Rack::Utils.escape(pattern_value)}" if pattern_value && !pattern_value.empty? %>
+                <a href="/categories/new<%= query.empty? ? "" : "?#{query.join("&")}" %>"
+                   title="Create a rule category for this transaction" class="add-rule-btn">+</a>
               <% end %>
             </td>
           </tr>

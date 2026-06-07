@@ -19,6 +19,6 @@ require_relative "budgie/cli/main"
 
 module Budgie
   class Error < StandardError; end
-  class RuleNotFound < Error; end
+  class CategoryNotFound < Error; end
   class InvalidPattern < Error; end
 end

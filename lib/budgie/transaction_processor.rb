@@ -12,13 +12,13 @@ module Budgie
       "account"       => "account",
     }.freeze
 
-    def initialize(rule_repository:, transaction_repository:)
-      @rules = rule_repository.all
+    def initialize(category_repository:, transaction_repository:)
+      @categories = category_repository.all
       @trepo = transaction_repository
     end
 
     def reprocess_all
-      compiled = @rules.map { |r| [r, r.patterns] }
+      compiled = @categories.map { |category| [category, category.rules] }
       transactions = @trepo.all
 
       transactions.each do |t|
@@ -26,9 +26,9 @@ module Budgie
 
         row = build_row(t)
         extras = {}
-        compiled.each do |rule, patterns|
-          next unless patterns.any? { |p| p.matches?(row[p.source_col]) }
-          extras[rule.output_col] = rule.output_value
+        compiled.each do |category, rules|
+          next unless rules.any? { |rule| rule.matches?(row[rule.source_col]) }
+          extras[category.output_col] = category.output_value
         end
         @trepo.set_processed_data(t["id"], extras)
       end

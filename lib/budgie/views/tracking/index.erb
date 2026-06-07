@@ -1,5 +1,6 @@
 <div class="page-header">
   <h2>Tracking</h2>
+  <span class="uncategorized-summary"><%= @uncategorized_count %> uncategorized transaction<%= @uncategorized_count == 1 ? "" : "s" %> this month</span>
 </div>
 
 <% if @months.empty? %>
@@ -89,6 +90,13 @@
 
   .cat-name { font-weight: 500; }
   .uncategorized { color: #555; font-style: italic; }
+
+  .uncategorized-summary {
+    display: inline-block;
+    margin-left: 16px;
+    color: #aaa;
+    font-size: 13px;
+  }
 
   .row-over td   { background: rgba(239,68,68,0.04); }
   .row-under td  { background: rgba(134,239,172,0.03); }

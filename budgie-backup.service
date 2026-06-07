@@ -1,0 +1,12 @@
+[Unit]
+Description=Budgie Database Backup
+Documentation=https://github.com/danielphodson/budgie
+
+[Service]
+Type=oneshot
+User=daniel
+WorkingDirectory=/home/daniel/git/budgie
+Environment="PATH=/home/daniel/.rbenv/shims:/home/daniel/.rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/bin/ruby /home/daniel/git/budgie/scripts/backup_database.rb
+StandardOutput=journal
+StandardError=journal
