@@ -8,7 +8,7 @@ module Budgie
                     desc: "Port to listen on"
       option :host, type: :string,  default: "localhost", aliases: "-H",
                     desc: "Host to bind to (use 0.0.0.0 to allow remote access)"
-      option :db,   type: :string,  default: Budgie::Database::DEFAULT_PATH, aliases: "-d",
+      option :db,   type: :string,  default: Budgie::Config.load.db_path, aliases: "-d",
                     desc: "Path to the SQLite database file"
       def start
         Budgie::Server.set(:db_path, options[:db])

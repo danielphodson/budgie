@@ -15,14 +15,15 @@ module Budgie
       @db.transaction do
         transactions.each do |t|
           # Check if this transaction already exists using the same logic as the unique index
-          existing = @db.execute(<<~SQL, [
+          params = [
             t[:account], t[:date], t[:amount],
             normalize_for_index(t[:other_party]),
             normalize_for_index(t[:description]),
             normalize_for_index(t[:reference]),
             normalize_for_index(t[:particulars]),
             normalize_for_index(t[:analysis_code])
-          ])
+          ]
+          existing = @db.execute(<<~SQL, params)
             SELECT id FROM transactions
             WHERE account = ? AND date = ? AND amount = ?
               AND LOWER(COALESCE(other_party,'')) = ?

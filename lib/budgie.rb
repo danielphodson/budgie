@@ -6,6 +6,7 @@ require "tempfile"
 
 require_relative "budgie/version"
 require_relative "budgie/database"
+require_relative "budgie/config"
 require_relative "budgie/rule"
 require_relative "budgie/rule_repository"
 require_relative "budgie/processor"

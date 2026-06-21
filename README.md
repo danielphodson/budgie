@@ -199,7 +199,20 @@ The script reads the `Other Party` and `Category` columns and creates one rule p
 
 ## Database
 
-By default the SQLite database is stored at `~/.budgie/budgie.db`. It is created automatically on first run. You can point budgie at a different file with `--db`:
+By default the SQLite database is stored at `~/budgie.data/budgie.db`. It is created automatically on first run.
+
+### Configuration
+
+Create `~/.budgie/config.yml` with optional values for `db_path` and `backup_dir`:
+
+```yaml
+db_path: /home/you/budgie.data/budgie.db
+backup_dir: /home/you/budgie.data/backups
+```
+
+Both `budgie server start` and `ruby scripts/backup_database.rb` will use the values in that file when the parameters are not provided explicitly.
+
+You can still override the database path on startup:
 
 ```sh
 budgie server start --db ~/Documents/my-budget.db

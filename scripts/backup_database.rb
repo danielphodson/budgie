@@ -3,6 +3,7 @@
 require "fileutils"
 require "sqlite3"
 require "time"
+require_relative "../lib/budgie/config"
 
 # Backup the Budgie database following SQLite best practices
 #
@@ -99,8 +100,9 @@ class DatabaseBackup
 end
 
 if __FILE__ == $0
-  db_path = ARGV[0] || DatabaseBackup::DEFAULT_DB_PATH
-  backup_dir = ARGV[1] || DatabaseBackup::DEFAULT_BACKUP_DIR
+  config = Budgie::Config.load
+  db_path = ARGV[0] || config.db_path
+  backup_dir = ARGV[1] || config.backup_dir
 
   begin
     DatabaseBackup.new(db_path, backup_dir).run
