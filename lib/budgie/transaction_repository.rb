@@ -48,13 +48,6 @@ module Budgie
       stmt&.close
     end
 
-    private
-
-    def normalize_for_index(val)
-      # Mirrors the LOWER(COALESCE(...,'')) logic used in the unique index
-      (val || '').downcase
-    end
-
     def available_months
       rows = @db.execute(
         "SELECT DISTINCT substr(date, 1, 7) AS month FROM transactions ORDER BY month DESC"
@@ -85,6 +78,13 @@ module Budgie
         "UPDATE transactions SET manual_category = ? WHERE id = ?",
         [category, id]
       )
+    end
+
+    private
+
+    def normalize_for_index(val)
+      # Mirrors the LOWER(COALESCE(...,'')) logic used in the unique index
+      (val || '').downcase
     end
   end
 end
